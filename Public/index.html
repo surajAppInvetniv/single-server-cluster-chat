@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Socket IO</title>
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+      integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T"
+      crossorigin="anonymous"
+    />
+    <script src="/socket.io/socket.io.js"></script>
+  </head>
+  <body>
+    <div class="container mt-5">
+      <div class="row">
+        <div class="col-md-4">
+          <div class="card card-body bg-dark">
+            <h3 class="text-light">Chatterz</h3>
+            <ul id="onlineUserList" class="list-group"></ul>
+          </div>
+        </div>
+
+        <div class="col-md-8">
+          <ul class="chat list-group" id="chat"></ul>
+          <form id="messageForm">
+            <div class="form-group">
+              <label for="">Enter Message</label>
+              <textarea class="form-control" id="message"></textarea>
+              <br />
+              <input type="submit" class="btn btn-primary" value="Send Msg" />
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    <script>
+      const swapRoom = (roomIds, index0, index1) => {
+        let temp = roomIds[index0];
+        roomIds[index0] = roomIds[index1];
+        roomIds[index1] = temp;
+        return roomIds;
+      };
+      // web socket connection
+      let socket = io.connect("ws://localhost:8000/", {
+        transports: ["websocket"]
+      });
+
+      // Grabbing Html elements
+      let msgForm = document.getElementById("messageForm");
+      let msg = document.getElementById("message");
+      let chat = document.getElementById("chat");
+      let activeOnlineList = document.getElementById("onlineUserList");
+      let windowUrl = window.location.pathname;
+      let newParam = windowUrl.split(".");
+
+      let username1 = newParam[0].split("/")[2];
+
+      let username2 = newParam[1];
+      let paramOne = `${username1}.${username2}`;
+
+      let newRoomIds = swapRoom([username1, username2], 0, 1);
+      let paramTwo = newRoomIds.join(".");
+
+      let params = {
+        room1: paramOne,
+        room2: paramTwo,
+        currentUser: username2
+      };
+      // Sending Room Details
+      socket.emit("join pv", params);
+      // Sending Current User name
+      socket.emit("current user", username2);
+      console.log(username2);
+
+      msgForm.addEventListener("submit", e => {
+        e.preventDefault();
+        socket.emit(
+          "send message",
+          {
+            room: paramOne,
+            message: msg.value
+          },
+          () => {
+            msg.value = " ";
+          }
+        );
+      });
+
+      socket.on("new message", data => {
+        console.log(data);
+        var node = document.createElement("li");
+        node.classList = "list-group-item";
+
+        var textnode = document.createTextNode(
+          `${data.userDetail.name}- ${data.msg}`
+        );
+
+        node.appendChild(textnode);
+        chat.appendChild(node);
+      });
+      // socket.on("online user", data => {
+      //   let node = document.createElement("li");
+      //   node.classList = "list-group-item";
+
+      //   let textnode = document.createTextNode(data.msg);
+
+      //   node.appendChild(textnode);
+
+      //   activeOnlineList.appendChild(node);
+      // });
+    </script>
+  </body>
+</html>
